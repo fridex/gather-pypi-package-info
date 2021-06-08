@@ -26,6 +26,7 @@ from thoth.python import Source
 init_logging()
 
 _LOGGER = logging.getLogger("thoth.gather_pypi_package_info")
+_LOGGER.setLevel(logging.INFO)
 _OUTPUT_FILE = os.getenv("OUTPUT_FILE", "gathered_pypi_package_info.yaml")
 
 
