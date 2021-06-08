@@ -95,6 +95,8 @@ objects:
                 value: "1"
               - name: BUCKET_NAME
                 value: thoth
+              - name: S3_ENDPOINT
+                value: "https://s3.upshift.redhat.com"
               - name: ACCESS_KEY_ID
               - name: SECRET_ACCESS_KEY
             resources:
