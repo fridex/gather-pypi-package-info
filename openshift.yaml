@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: pypi-gather-package-info
+  labels:
+    app: pypi-gather-package-info
+
+objects:
+  - apiVersion: "image.openshift.io/v1"
+    kind: ImageStream
+    metadata:
+      labels:
+        app: pypi-gather-package-info
+      name: "s2i-thoth-ubi8-py36"
+    spec:
+      tags:
+        - name: "latest"
+          from:
+            kind: "DockerImage"
+            name: "quay.io/thoth-station/s2i-thoth-ubi8-py36:v0.27.0"
+          referencePolicy:
+            type: "Source"
+
+  - apiVersion: "image.openshift.io/v1"
+    kind: ImageStream
+    metadata:
+      labels:
+        app: pypi-gather-package-info
+      name: pypi-gather-package-info
+    spec:
+      name: pypi-gather-package-info
+      lookupPolicy:
+        local: true
+
+  - kind: BuildConfig
+    apiVersion: v1
+    metadata:
+      name: pypi-gather-package-info
+      labels:
+        app: pypi-gather-package-info
+    spec:
+      successfulBuildsHistoryLimit: 10
+      failedBuildsHistoryLimit: 10
+      resources:
+        requests:
+          cpu: 1
+          memory: 512Mi
+        limits:
+          cpu: 1
+          memory: 512Mi
+      output:
+        to:
+          kind: ImageStreamTag
+          name: "pypi-gather-package-info:latest"
+      source:
+        type: Git
+        git:
+          uri: "https://github.com/fridex/gather-pypi-package-info"
+          ref: "main"
+      strategy:
+        type: Source
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            name: "s2i-thoth-ubi8-py36:latest"
+          env:
+            - name: THOTH_ADVISE
+              value: "0"
+            - name: THOTH_CONFIG_CHECK
+              value: "0"
+            - name: THOTH_PROVENANCE_CHECK
+              value: "0"
+      triggers:
+        - type: ImageChange
+          imageChange: {}
+
+  - apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: pypi-gather-package-info
+    spec:
+      parallelism: 1
+      completions: 1
+      activeDeadlineSeconds: 1800
+      backoffLimit: 6
+      template:
+        metadata:
+          name: pypi-gather-package-info
+        spec:
+          containers:
+          - name: main
+            image: pypi-gather-package-info
+            env:
+              - name: THOTH_LOGGING_NO_JSON
+                value: "1"
+          restartPolicy: OnFailure
