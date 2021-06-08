@@ -93,4 +93,15 @@ objects:
             env:
               - name: THOTH_LOGGING_NO_JSON
                 value: "1"
+              - name: BUCKET_NAME
+                value: thoth
+              - name: ACCESS_KEY_ID
+              - name: SECRET_ACCESS_KEY
+            resources:
+              requests:
+                cpu: 1
+                memory: 512Mi
+              limits:
+                cpu: 1
+                memory: 512Mi
           restartPolicy: OnFailure
