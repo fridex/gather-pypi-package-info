@@ -11,13 +11,13 @@ objects:
     metadata:
       labels:
         app: pypi-gather-package-info
-      name: "s2i-thoth-ubi8-py36"
+      name: "s2i-thoth-ubi8-py38"
     spec:
       tags:
         - name: "latest"
           from:
             kind: "DockerImage"
-            name: "quay.io/thoth-station/s2i-thoth-ubi8-py36:v0.27.0"
+            name: "quay.io/thoth-station/s2i-thoth-ubi8-py38:v0.27.0"
           referencePolicy:
             type: "Source"
 
@@ -62,7 +62,7 @@ objects:
         sourceStrategy:
           from:
             kind: ImageStreamTag
-            name: "s2i-thoth-ubi8-py36:latest"
+            name: "s2i-thoth-ubi8-py38:latest"
           env:
             - name: THOTH_ADVISE
               value: "0"
