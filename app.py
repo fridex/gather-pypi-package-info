@@ -17,6 +17,7 @@
 
 """Obtain Python package information from PyPI."""
 
+import botocore
 import boto3
 import logging
 import os
@@ -32,6 +33,7 @@ _OUTPUT_FILE = os.getenv("OUTPUT_FILE", "gathered_pypi_package_info.yaml")
 _OUTPUT_KEY = os.getenv("OUTPUT_KEY", f"data/{_OUTPUT_FILE}")
 _BUCKET_NAME = os.environ["BUCKET_NAME"]
 _ACCESS_KEY_ID = os.environ["ACCESS_KEY_ID"]
+_S3_ENDPOINT = os.environ["S3_ENDPOINT"]
 _SECRET_ACCESS_KEY = os.environ["SECRET_ACCESS_KEY"]
 
 
@@ -43,7 +45,11 @@ def cli() -> None:
         aws_access_key_id=_ACCESS_KEY_ID,
         aws_secret_access_key=_SECRET_ACCESS_KEY,
     )
-    s3 = session.resource('s3')
+    s3 = session.resource(
+        "s3",
+        config=botocore.client.Config(signature_version="s3v4"),
+        endpoint_url=_S3_ENDPOINT,
+    )
 
     _LOGGER.info("Obtaining package listing")
     packages = sorted(pypi.get_packages())
@@ -51,19 +57,29 @@ def cli() -> None:
     packages_info = []
     failed = []
     try:
-        for idx, package_name in enumerate(sorted(pypi.get_packages())):
-            _LOGGER.info("%8s/%d Obtaining package info for %r", idx, len(packages), package_name)
+        for idx, package_name in enumerate(packages):
+            _LOGGER.info(
+                "%8s/%d Obtaining package info for %r", idx, len(packages), package_name
+            )
             try:
-                packages_info.append(pypi._warehouse_get_api_package_info(package_name=package_name))
+                packages_info.append(
+                    pypi._warehouse_get_api_package_info(package_name=package_name)
+                )
             except Exception:
                 failed.append(package_name)
-                _LOGGER.exception("Failed to obtain package information for %r", package_name)
+                _LOGGER.exception(
+                    "Failed to obtain package information for %r", package_name
+                )
     finally:
         _LOGGER.info("Writing results to %r", _OUTPUT_FILE)
         with open(_OUTPUT_FILE, "w") as output:
             yaml.safe_dump({"packages_info": packages_info, "failed": failed}, output)
 
-        s3.meta.client.upload_file(Filename=_OUTPUT_FILE, Bucket='bucket_name', Key='s3_output_key')
+        s3.meta.client.upload_file(
+            Filename=_OUTPUT_FILE,
+            Bucket=_BUCKET_NAME,
+            Key=_OUTPUT_KEY,
+        )
 
 
 __name__ == "__main__" and cli()
