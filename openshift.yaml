@@ -81,7 +81,6 @@ objects:
     spec:
       parallelism: 1
       completions: 1
-      activeDeadlineSeconds: 1800
       backoffLimit: 6
       template:
         metadata:
