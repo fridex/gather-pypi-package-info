@@ -37,6 +37,13 @@ _S3_ENDPOINT = os.environ["S3_ENDPOINT"]
 _SECRET_ACCESS_KEY = os.environ["SECRET_ACCESS_KEY"]
 
 
+def _chunks(l, n):
+    newn = int(len(l) / n)
+    for i in range(0, n-1):
+        yield l[i*newn:i*newn+newn]
+    yield l[n*newn-newn:]
+
+
 def cli() -> None:
     """Aggregate release information of packages."""
     pypi = Source("https://pypi.org/simple")
@@ -54,12 +61,12 @@ def cli() -> None:
     _LOGGER.info("Obtaining package listing")
     packages = sorted(pypi.get_packages())
 
-    packages_info = []
-    failed = []
-    try:
-        for idx, package_name in enumerate(packages):
+    for chunk_idx, chunk in enumerate(_chunks(packages, 1000)):
+        packages_info = []
+        failed = []
+        for idx, package_name in enumerate(chunk):
             _LOGGER.info(
-                "%8s/%d Obtaining package info for %r", idx, len(packages), package_name
+                "%d %8s/%d Obtaining package info for %r", chunk_idx, idx, len(packages), package_name
             )
             try:
                 packages_info.append(
@@ -70,16 +77,19 @@ def cli() -> None:
                 _LOGGER.exception(
                     "Failed to obtain package information for %r", package_name
                 )
-    finally:
-        _LOGGER.info("Writing results to %r", _OUTPUT_FILE)
-        with open(_OUTPUT_FILE, "w") as output:
+
+        _LOGGER.info("Writing results to %r", f"{chunk_idx}_{_OUTPUT_FILE}")
+        with open(f"{chunk_idx}_{_OUTPUT_FILE}", "w") as output:
             yaml.safe_dump({"packages_info": packages_info, "failed": failed}, output)
 
         s3.meta.client.upload_file(
-            Filename=_OUTPUT_FILE,
+            Filename=f"{chunk_idx}_{_OUTPUT_FILE}",
             Bucket=_BUCKET_NAME,
-            Key=_OUTPUT_KEY,
+            Key=f"{chunk_idx}_{_OUTPUT_FILE}",
         )
+
+        del packages_info
+        del failed
 
 
 __name__ == "__main__" and cli()
